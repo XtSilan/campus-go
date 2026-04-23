@@ -116,9 +116,7 @@
 <script>
 import { createAdminListing, deleteAdminListing, fetchAdminListings, updateAdminListing, uploadAdminImage } from '../../api'
 
-const assetBase = process.env.NODE_ENV === 'development'
-  ? 'http://127.0.0.1:4000'
-  : ''
+const assetBase = process.env.ASSET_BASE_URL || ''
 
 function createDefaultForm() {
   return {

@@ -296,7 +296,7 @@ function goBuyer() {
         </view>
 
         <view class="section-card">
-          <EmptyState title="登录后开启闲鱼式聊天" description=" ">
+          <EmptyState title="登录后开启校园服务社区" description=" ">
             <view class="empty-action">
               <view class="action-btn dark" @click="jumpToLogin">
                 前往登录

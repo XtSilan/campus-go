@@ -1,6 +1,3 @@
-var merge = require('webpack-merge')
-var prodEnv = require('./prod.env')
+var loadClientEnv = require('./load-env').loadClientEnv
 
-module.exports = merge(prodEnv, {
-  NODE_ENV: '"development"'
-})
+module.exports = loadClientEnv('development')

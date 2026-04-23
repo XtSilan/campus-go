@@ -1,8 +1,6 @@
 import axios from 'axios'
 
-const base = process.env.NODE_ENV === 'development'
-  ? 'http://127.0.0.1:4000/api'
-  : '/api'
+const base = process.env.API_BASE_URL || '/api'
 
 const service = axios.create({
   baseURL: base,
