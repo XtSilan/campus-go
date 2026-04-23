@@ -186,7 +186,7 @@ async function pickImages() {
     for (const image of pickedImages) {
       const uploaded = await uploadImageAsset({
         fileName: image.fileName,
-        content: image.content,
+        filePath: image.filePath,
       })
       uploadedImages.push(uploaded.path)
     }

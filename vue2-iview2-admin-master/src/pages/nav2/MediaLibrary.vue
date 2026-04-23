@@ -163,14 +163,6 @@ export default {
         this.$refs.fileInput.click()
       }
     },
-    readFile(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result || ''))
-        reader.onerror = () => reject(new Error('读取文件失败'))
-        reader.readAsDataURL(file)
-      })
-    },
     async handleUpload(event) {
       const file = event.target && event.target.files ? event.target.files[0] : null
       if (!file) {
@@ -178,11 +170,7 @@ export default {
       }
       this.uploading = true
       try {
-        const content = await this.readFile(file)
-        await uploadAdminMediaLibraryFile({
-          fileName: file.name,
-          content,
-        })
+        await uploadAdminMediaLibraryFile(file)
         this.$Message.success('上传成功')
         await this.loadList()
       } catch (error) {

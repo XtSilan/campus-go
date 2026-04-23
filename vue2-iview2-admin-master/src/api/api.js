@@ -43,9 +43,16 @@ export const fetchAdminNotifications = params => service.get('/admin/notificatio
 export const createAdminNotification = params => service.post('/admin/notifications', params)
 export const updateAdminNotification = (id, params) => service.put(`/admin/notifications/${id}`, params)
 export const deleteAdminNotification = id => service.delete(`/admin/notifications/${id}`)
-export const uploadAdminImage = params => service.post('/admin/uploads/image', params, {
-  timeout: 10 * 60 * 1000,
-})
+export const uploadAdminImage = file => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return service.post('/admin/uploads/image', formData, {
+    timeout: 10 * 60 * 1000,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+}
 export const fetchAdminStorageSettings = () => service.get('/admin/storage')
 export const updateAdminStorageSettings = params => service.put('/admin/storage', params)
 export const validateAdminStorageSettings = params => service.post('/admin/storage/validate', params)
@@ -53,8 +60,15 @@ export const switchAdminStorageProvider = params => service.post('/admin/storage
 export const fetchAdminStorageSwitchProgress = () => service.get('/admin/storage/progress')
 export const fetchAdminMediaLibraryFiles = params => service.get('/admin/media-library', { params })
 export const fetchAdminMediaLibraryDirectUrl = params => service.get('/admin/media-library/direct-url', { params })
-export const uploadAdminMediaLibraryFile = params => service.post('/admin/media-library/upload', params, {
-  timeout: 10 * 60 * 1000,
-})
+export const uploadAdminMediaLibraryFile = file => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return service.post('/admin/media-library/upload', formData, {
+    timeout: 10 * 60 * 1000,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+}
 export const renameAdminMediaLibraryFile = params => service.post('/admin/media-library/rename', params)
 export const deleteAdminMediaLibraryFile = params => service.post('/admin/media-library/delete', params)

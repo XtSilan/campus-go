@@ -14,6 +14,7 @@ import { createServer } from 'node:http'
 import { WebSocketServer } from 'ws'
 import OSS from 'ali-oss'
 import express from 'express'
+import multer from 'multer'
 import { config } from './config.js'
 import {
   archiveListingRecord,
@@ -75,13 +76,17 @@ const wsServer = new WebSocketServer({ server: httpServer, path: '/ws' })
 const socketClientsByUser = new Map()
 const STORAGE_SWITCH_CONFIRM_TEXT = '我同意'
 let storageSwitchTask = null
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+  },
+})
 mkdirSync(config.uploadDir, { recursive: true })
 
 seedDatabase()
 cleanupExpiredSessions()
 
-app.use(express.json({ limit: '8mb' }))
-app.use('/uploads', express.static(config.uploadDir))
 app.use((request, response, next) => {
   response.setHeader('Access-Control-Allow-Origin', config.corsOrigin)
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
@@ -94,6 +99,8 @@ app.use((request, response, next) => {
 
   next()
 })
+app.use(express.json({ limit: config.jsonBodyLimit }))
+app.use('/uploads', express.static(config.uploadDir))
 
 function send(response, data = null, message = 'ok', status = 200) {
   response.status(status).json({
@@ -343,16 +350,6 @@ function buildOssPublicUrl(settings, objectKey, uploadResult) {
   return `${protocol}://${settings.oss.bucket}.${region}.aliyuncs.com/${objectKey}`
 }
 
-function decodeDataUrl(dataUrl) {
-  const match = String(dataUrl || '').match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/)
-  assert(match, '图片内容格式不正确')
-
-  return {
-    mimeType: match[1],
-    buffer: Buffer.from(match[2], 'base64'),
-  }
-}
-
 function extensionFromUpload(fileName, mimeType) {
   const safeExt = extname(String(fileName || '')).toLowerCase()
   if (safeExt) {
@@ -366,54 +363,6 @@ function extensionFromUpload(fileName, mimeType) {
     'image/gif': '.gif',
     'image/svg+xml': '.svg',
   }[mimeType] || '.jpg'
-}
-
-async function saveUploadedImage(request, body) {
-  const fileName = String(body.fileName || '').trim()
-  const content = String(body.content || '')
-  assert(fileName, '请提供文件名')
-  assert(content, '请提供图片内容')
-
-  const { mimeType, buffer } = decodeDataUrl(content)
-  assert(buffer.length > 0, '图片内容不能为空')
-  assert(buffer.length <= 5 * 1024 * 1024, '图片不能超过 5MB')
-
-  const extension = extensionFromUpload(fileName, mimeType)
-  const storageSettings = readStorageSettingsFromDb()
-
-  if (storageSettings.provider === 'oss') {
-    const objectKey = buildOssObjectKey(storageSettings, extension)
-    const uploadResult = await withOssFallback(storageSettings, async (client) => {
-      const result = await client.put(objectKey, buffer, {
-        headers: {
-          'Content-Type': mimeType,
-        },
-      })
-      return { result }
-    })
-
-    return {
-      fileName,
-      mimeType,
-      size: buffer.length,
-      path: buildOssPublicUrl(storageSettings, objectKey, uploadResult.result),
-      storage: 'oss',
-      objectKey,
-      usedCompatibilitySignature: uploadResult.usedCompatibilitySignature,
-    }
-  }
-
-  const storedName = `${Date.now()}-${randomBytes(5).toString('hex')}${extension}`
-  const publicPath = `/uploads/${storedName}`
-  writeFileSync(`${config.uploadDir}/${storedName}`, buffer)
-
-  return {
-    fileName,
-    mimeType,
-    size: buffer.length,
-    path: buildAssetUrl(request, publicPath),
-    storage: 'local',
-  }
 }
 
 function decodeAnyDataUrl(dataUrl) {
@@ -571,6 +520,30 @@ async function uploadBufferToCurrentStorage(request, fileName, buffer, mimeType)
     mimeType,
     isImage: isImageMimeType(mimeType),
     updatedAt: new Date().toISOString(),
+  }
+}
+
+async function saveUploadedImage(request, file, maxSize = 5 * 1024 * 1024) {
+  assert(file, '请选择图片文件')
+
+  const fileName = String(file.originalname || file.fieldname || '').trim()
+  const mimeType = String(file.mimetype || '').trim().toLowerCase()
+  const buffer = file.buffer
+
+  assert(fileName, '请提供文件名')
+  assert(buffer && buffer.length > 0, '图片内容不能为空')
+  assert(mimeType.startsWith('image/'), '仅支持图片文件')
+  assert(buffer.length <= maxSize, `图片不能超过 ${Math.floor(maxSize / 1024 / 1024)}MB`)
+
+  const savedFile = await uploadBufferToCurrentStorage(request, fileName, buffer, mimeType)
+
+  return {
+    fileName,
+    mimeType,
+    size: buffer.length,
+    path: savedFile.url,
+    storage: savedFile.path.startsWith('oss://') ? 'oss' : 'local',
+    objectKey: savedFile.path.startsWith('oss://') ? savedFile.path.replace(/^oss:\/\//, '') : undefined,
   }
 }
 
@@ -1382,9 +1355,9 @@ app.post('/api/me/history/:id', requireAuth, (request, response, next) => {
   }
 })
 
-app.post('/api/uploads/image', requireAuth, async (request, response, next) => {
+app.post('/api/uploads/image', requireAuth, upload.single('file'), async (request, response, next) => {
   try {
-    send(response, await saveUploadedImage(request, request.body), '图片上传成功', 201)
+    send(response, await saveUploadedImage(request, request.file), '图片上传成功', 201)
   }
   catch (error) {
     next(error)
@@ -1743,9 +1716,9 @@ app.post('/api/admin/storage/validate', requireAdmin, async (request, response, 
   }
 })
 
-app.post('/api/admin/uploads/image', requireAdmin, async (request, response, next) => {
+app.post('/api/admin/uploads/image', requireAdmin, upload.single('file'), async (request, response, next) => {
   try {
-    send(response, await saveUploadedImage(request, request.body), '图片上传成功', 201)
+    send(response, await saveUploadedImage(request, request.file), '图片上传成功', 201)
   }
   catch (error) {
     next(error)
@@ -1776,19 +1749,20 @@ app.get('/api/admin/media-library/direct-url', requireAdmin, (request, response,
   }
 })
 
-app.post('/api/admin/media-library/upload', requireAdmin, async (request, response, next) => {
+app.post('/api/admin/media-library/upload', requireAdmin, upload.single('file'), async (request, response, next) => {
   try {
-    const fileName = String(request.body.fileName || '').trim()
-    const content = String(request.body.content || '').trim()
-    assert(fileName, '请提供文件名')
-    assert(content, '请提供文件内容')
-
-    const decoded = decodeAnyDataUrl(content)
-    assert(decoded.buffer.length > 0, '文件内容不能为空')
-    assert(decoded.buffer.length <= 20 * 1024 * 1024, '文件不能超过 20MB')
+    const file = request.file
+    assert(file, '请选择文件')
+    assert(file.buffer && file.buffer.length > 0, '文件内容不能为空')
+    assert(file.buffer.length <= 20 * 1024 * 1024, '文件不能超过 20MB')
 
     send(response, {
-      file: await uploadBufferToCurrentStorage(request, fileName, decoded.buffer, decoded.mimeType),
+      file: await uploadBufferToCurrentStorage(
+        request,
+        String(file.originalname || file.fieldname || 'upload.bin'),
+        file.buffer,
+        String(file.mimetype || 'application/octet-stream'),
+      ),
     }, '文件上传成功', 201)
   }
   catch (error) {
@@ -1873,10 +1847,11 @@ app.use((request, response) => {
 })
 
 app.use((error, _request, response, _next) => {
-  const status = error instanceof HttpError ? error.status : 500
+  const isMulterLimit = error?.code === 'LIMIT_FILE_SIZE'
+  const status = error instanceof HttpError ? error.status : (isMulterLimit ? 400 : 500)
   response.status(status).json({
     success: false,
-    message: error.message || '服务器内部错误',
+    message: isMulterLimit ? '文件超过上传大小限制' : (error.message || '服务器内部错误'),
     data: null,
   })
 })

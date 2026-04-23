@@ -257,14 +257,6 @@ export default {
         this.$refs.imageInput.click()
       }
     },
-    readFile(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(String(reader.result || ''))
-        reader.onerror = () => reject(new Error('读取图片失败'))
-        reader.readAsDataURL(file)
-      })
-    },
     async handleImageChange(event) {
       const file = event.target && event.target.files && event.target.files[0]
       if (!file) {
@@ -279,11 +271,7 @@ export default {
 
       this.uploading = true
       try {
-        const content = await this.readFile(file)
-        const uploaded = await uploadAdminImage({
-          fileName: file.name,
-          content,
-        })
+        const uploaded = await uploadAdminImage(file)
         this.form.imageUrl = uploaded.data.path || ''
         this.$Message.success('图片上传成功')
       } catch (error) {
