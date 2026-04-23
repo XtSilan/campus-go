@@ -17,6 +17,7 @@ import express from 'express'
 import { config } from './config.js'
 import {
   archiveListingRecord,
+  deleteListingRecord,
   cleanupExpiredSessions,
   createConversationForListing,
   createConversationMessage,
@@ -1519,11 +1520,8 @@ app.post('/api/admin/listings', requireAdmin, (request, response, next) => {
   try {
     const ownerId = Number(request.body.ownerId || request.viewer.id)
     assert(findUserById(ownerId), '发布人不存在')
-    const payload = parseListingPayload(request.body, { keepStatus: true })
+    const payload = parseListingPayload(request.body)
     const listingId = createListingRecord(ownerId, payload)
-    if (payload.status === 'archived') {
-      archiveListingRecord(listingId)
-    }
     send(response, getListingById(listingId, request.viewer.id, ownerId), '新增商品成功', 201)
   }
   catch (error) {
@@ -1536,7 +1534,7 @@ app.put('/api/admin/listings/:id', requireAdmin, (request, response, next) => {
     const listingId = Number(request.params.id)
     const ownerRow = findListingOwner(listingId)
     assert(ownerRow, '未找到对应信息', 404)
-    const payload = parseListingPayload(request.body, { keepStatus: true })
+    const payload = parseListingPayload(request.body)
     updateListingRecord(listingId, payload)
     send(response, getListingById(listingId, request.viewer.id, ownerRow.owner_id), '商品更新成功')
   }
@@ -1550,8 +1548,8 @@ app.delete('/api/admin/listings/:id', requireAdmin, (request, response, next) =>
     const listingId = Number(request.params.id)
     const ownerRow = findListingOwner(listingId)
     assert(ownerRow, '未找到对应信息', 404)
-    archiveListingRecord(listingId)
-    send(response, { id: listingId }, '商品已下架')
+    deleteListingRecord(listingId)
+    send(response, { id: listingId }, '商品已删除')
   }
   catch (error) {
     next(error)

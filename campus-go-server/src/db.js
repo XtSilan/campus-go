@@ -768,6 +768,10 @@ export function archiveListingRecord(listingId) {
   db.prepare(`UPDATE listings SET status = 'archived', updated_at = ? WHERE id = ?`).run(now(), listingId)
 }
 
+export function deleteListingRecord(listingId) {
+  db.prepare(`DELETE FROM listings WHERE id = ?`).run(listingId)
+}
+
 export function getDashboard(userId) {
   const summary = db.prepare(`
     SELECT
