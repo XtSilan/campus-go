@@ -1,0 +1,15 @@
+{
+  "name": "campus-go-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --no-warnings=ExperimentalWarning --env-file=.env --watch src/server.js",
+    "start": "node --no-warnings=ExperimentalWarning --env-file=.env src/server.js"
+  },
+  "dependencies": {
+    "ali-oss": "^6.23.0",
+    "express": "^5.1.0",
+    "ws": "^8.20.0"
+  }
+}

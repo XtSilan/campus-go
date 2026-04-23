@@ -1,0 +1,11 @@
+{
+  "name": "campus-go-workspace",
+  "private": true,
+  "scripts": {
+    "dev:app": "pnpm --dir campus-go-app dev h5",
+    "dev:server": "pnpm --dir campus-go-server dev",
+    "build:h5": "pnpm --dir campus-go-app build h5",
+    "build:mp-weixin": "pnpm --dir campus-go-app build mp-weixin",
+    "build:app": "pnpm --dir campus-go-app build app"
+  }
+}

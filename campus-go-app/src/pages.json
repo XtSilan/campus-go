@@ -1,0 +1,73 @@
+{
+  "pages": [
+    {
+      "path": "pages/seller/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/buyer/index",
+      "style": {
+        "navigationStyle": "custom",
+        "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/publish/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/cart/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/personalization",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/settings",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/trades",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/follows",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/detail/index",
+      "style": {
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "backgroundColor": "#f0ede7",
+    "backgroundTextStyle": "dark",
+    "navigationBarBackgroundColor": "#f0ede7",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "校园购"
+  },
+  "subPackages": []
+}

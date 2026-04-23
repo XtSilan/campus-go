@@ -1,0 +1,60 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.history/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+admin-dev.log
+admin-dev.err.log
+server.log
+server.err.log
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+
+# Build outputs
+dist/
+build/
+coverage/
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+# Uni-app / HBuilder
+unpackage/
+.hbuilderx/
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Local database / uploads
+campus-go-server/data/*.sqlite
+campus-go-server/data/*.sqlite-shm
+campus-go-server/data/*.sqlite-wal
+campus-go-server/data/uploads/
+
+# Generated files
+campus-go-app/components.d.ts
+
+# Temporary files
+*.tmp
+*.temp
