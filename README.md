@@ -416,5 +416,3 @@ npm run build
 ## Acknowledgements
 
 - 管理后台基础模板来自 `vue2-iview2-admin-master`
-- UI 重构阶段参考了本地 `le-labo-ui` 演示页面
-- README 结构参考了 GitHub Docs 对 README 的建议，以及 React / Supabase 这类热门仓库常见的“简介 + 快速开始 + 文档分区”组织方式
