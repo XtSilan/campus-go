@@ -420,4 +420,4 @@ npm run build
 
 ## 致谢
 
-- 管理后台基础模板来自 `vue2-iview2-admin-master`
+- 管理后台基础模板来自 `[vue2-iview2-admin](https://github.com/hanjiangxueying/vue2-iview2-admin)`
