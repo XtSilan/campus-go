@@ -27,6 +27,7 @@ const entryConversationId = ref(0)
 const openedByDeepLink = ref(false)
 
 const currentUserId = computed(() => authStore.currentUser?.id || 0)
+const currentUserAvatarUrl = computed(() => authStore.currentUser?.avatarUrl || '')
 
 const conversationTitle = computed(() => activeConversation.value?.peerUser.nickname || '消息')
 const conversationSubtitle = computed(() => {
@@ -365,8 +366,15 @@ function goBuyer() {
               class="message-row"
               :class="{ mine: isMine(message) }"
             >
-              <view v-if="!isMine(message)" class="bubble-avatar" :style="{ background: activeConversation.peerUser.avatarColor }">
-                {{ getCategoryInitial(activeConversation.peerUser.nickname) }}
+              <view
+                v-if="!isMine(message)"
+                class="bubble-avatar"
+                :style="{ background: activeConversation.peerUser.avatarColor }"
+              >
+                <image v-if="activeConversation.peerUser.avatarUrl" class="bubble-avatar-image" :src="activeConversation.peerUser.avatarUrl" mode="aspectFill" />
+                <template v-else>
+                  {{ getCategoryInitial(activeConversation.peerUser.nickname) }}
+                </template>
               </view>
               <view class="bubble-wrap">
                 <view class="bubble">
@@ -375,6 +383,16 @@ function goBuyer() {
                 <view class="bubble-time">
                   {{ formatMessageTime(message.createdAt) }}
                 </view>
+              </view>
+              <view
+                v-if="isMine(message)"
+                class="bubble-avatar mine-avatar"
+                :style="{ background: authStore.currentUser?.avatarColor || '#c07d5c' }"
+              >
+                <image v-if="currentUserAvatarUrl" class="bubble-avatar-image" :src="currentUserAvatarUrl" mode="aspectFill" />
+                <template v-else>
+                  {{ getCategoryInitial(authStore.currentUser?.nickname || '我') }}
+                </template>
               </view>
             </view>
           </template>
@@ -731,6 +749,16 @@ function goBuyer() {
   font-size: 20rpx;
   font-weight: 700;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.bubble-avatar-image {
+  width: 100%;
+  height: 100%;
+}
+
+.mine-avatar {
+  margin-left: 8rpx;
 }
 
 .bubble-wrap {

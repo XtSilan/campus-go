@@ -78,6 +78,7 @@ export const useAuthStore = defineStore('auth', () => {
     phone: string
     wechat: string
     qq: string
+    avatarUrl: string
   }) {
     const user = await requestUpdateProfile(payload)
     currentUser.value = user

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { onShow } from '@dcloudio/uni-app'
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
+import { uploadImageAsset } from '@/api/uploads'
 import { useAuthStore } from '@/stores/auth'
+import { chooseSingleImage } from '@/utils/image'
 import { showError, showSuccess } from '@/utils/ui'
 
 const authStore = useAuthStore()
 const saving = ref(false)
+const avatarUploading = ref(false)
 const form = reactive({
   nickname: '',
   campus: '',
@@ -14,7 +17,10 @@ const form = reactive({
   phone: '',
   wechat: '',
   qq: '',
+  avatarUrl: '',
 })
+
+const avatarPreview = computed(() => form.avatarUrl || '')
 
 function syncForm() {
   if (!authStore.currentUser) {
@@ -29,6 +35,7 @@ function syncForm() {
     phone: authStore.currentUser.phone || '',
     wechat: authStore.currentUser.wechat || '',
     qq: authStore.currentUser.qq || '',
+    avatarUrl: authStore.currentUser.avatarUrl || '',
   })
 }
 
@@ -58,6 +65,25 @@ function goBack() {
   })
 }
 
+async function chooseAvatar() {
+  avatarUploading.value = true
+  try {
+    const image = await chooseSingleImage()
+    const uploaded = await uploadImageAsset({
+      fileName: image.fileName,
+      filePath: image.filePath,
+    })
+    form.avatarUrl = uploaded.path
+    showSuccess('头像已上传')
+  }
+  catch (error) {
+    showError((error as Error).message)
+  }
+  finally {
+    avatarUploading.value = false
+  }
+}
+
 async function submitForm() {
   if (!form.nickname.trim()) {
     showError('请填写昵称')
@@ -79,6 +105,7 @@ async function submitForm() {
       phone: form.phone.trim(),
       wechat: form.wechat.trim(),
       qq: form.qq.trim(),
+      avatarUrl: form.avatarUrl.trim(),
     })
     showSuccess('资料已更新')
     setTimeout(() => {
@@ -111,6 +138,21 @@ async function submitForm() {
         个人资料
       </view>
       <view class="editor-card">
+        <view class="editor-row" @click="chooseAvatar">
+          <view class="row-title">
+            头像
+          </view>
+          <view class="row-side">
+            <view class="avatar-preview" :style="{ background: authStore.currentUser?.avatarColor || '#c07d5c' }">
+              <image v-if="avatarPreview" class="avatar-image" :src="avatarPreview" mode="aspectFill" />
+              <template v-else>
+                {{ authStore.currentUser?.nickname?.slice(0, 1) || '我' }}
+              </template>
+            </view>
+            <text class="row-action">{{ avatarUploading ? '上传中...' : '更换' }}</text>
+            <text class="row-arrow">›</text>
+          </view>
+        </view>
         <view class="editor-row">
           <view class="row-title">
             昵称
@@ -258,6 +300,42 @@ async function submitForm() {
   font-size: 30rpx;
   color: #6f6f6f;
   text-align: right;
+}
+
+.row-side {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14rpx;
+}
+
+.avatar-preview {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+  font-size: 28rpx;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
+}
+
+.row-action {
+  font-size: 24rpx;
+  color: #8f8f8f;
+}
+
+.row-arrow {
+  font-size: 34rpx;
+  color: #d0d0d0;
 }
 
 .row-textarea {

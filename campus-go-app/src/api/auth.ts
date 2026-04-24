@@ -38,6 +38,7 @@ export function updateProfile(payload: {
   phone: string
   wechat: string
   qq: string
+  avatarUrl: string
 }) {
   return request<UserProfile>({
     url: '/auth/profile',

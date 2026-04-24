@@ -176,9 +176,6 @@ async function logout() {
   <view class="profile-page">
     <view class="page-top">
       <view class="top-actions">
-        <view class="ghost-action">
-          ⌁
-        </view>
         <view class="ghost-action" @click="openSettings">
           设置
         </view>
@@ -186,7 +183,10 @@ async function logout() {
 
       <view v-if="authStore.isLoggedIn" class="user-hero">
         <view class="avatar" :style="{ background: authStore.currentUser?.avatarColor || '#ffd84f' }">
-          {{ authStore.currentUser?.nickname?.slice(0, 1) || '我' }}
+          <image v-if="authStore.currentUser?.avatarUrl" class="avatar-image" :src="authStore.currentUser.avatarUrl" mode="aspectFill" />
+          <template v-else>
+            {{ authStore.currentUser?.nickname?.slice(0, 1) || '我' }}
+          </template>
         </view>
         <view class="user-copy">
           <view class="user-name">
@@ -366,6 +366,12 @@ async function logout() {
   font-weight: 800;
   color: #111;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.avatar-image {
+  width: 100%;
+  height: 100%;
 }
 
 .guest-avatar {

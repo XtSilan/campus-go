@@ -15,6 +15,7 @@ import { WebSocketServer } from 'ws'
 import OSS from 'ali-oss'
 import express from 'express'
 import multer from 'multer'
+import sharp from 'sharp'
 import { config } from './config.js'
 import {
   archiveListingRecord,
@@ -351,18 +352,19 @@ function buildOssPublicUrl(settings, objectKey, uploadResult) {
 }
 
 function extensionFromUpload(fileName, mimeType) {
-  const safeExt = extname(String(fileName || '')).toLowerCase()
-  if (safeExt) {
-    return safeExt
-  }
-
-  return {
+  const mimeExtension = {
     'image/jpeg': '.jpg',
     'image/png': '.png',
     'image/webp': '.webp',
     'image/gif': '.gif',
     'image/svg+xml': '.svg',
-  }[mimeType] || '.jpg'
+  }[mimeType]
+  const safeExt = extname(String(fileName || '')).toLowerCase()
+  if (mimeExtension && safeExt && (safeExt === mimeExtension || (mimeExtension === '.jpg' && safeExt === '.jpeg'))) {
+    return safeExt
+  }
+
+  return mimeExtension || safeExt || '.jpg'
 }
 
 function decodeAnyDataUrl(dataUrl) {
@@ -424,6 +426,73 @@ function guessMimeType(fileName) {
 
 function isImageMimeType(mimeType) {
   return String(mimeType || '').toLowerCase().startsWith('image/')
+}
+
+async function compressImageBuffer(buffer, mimeType) {
+  const normalizedMimeType = String(mimeType || '').toLowerCase()
+  if (!buffer?.length || !normalizedMimeType.startsWith('image/')) {
+    return {
+      buffer,
+      mimeType: normalizedMimeType,
+      compressed: false,
+    }
+  }
+
+  if (normalizedMimeType === 'image/gif' || normalizedMimeType === 'image/svg+xml') {
+    return {
+      buffer,
+      mimeType: normalizedMimeType,
+      compressed: false,
+    }
+  }
+
+  const image = sharp(buffer, { animated: false, failOn: 'none' }).rotate()
+  const metadata = await image.metadata()
+  const width = Number(metadata.width || 0)
+  const height = Number(metadata.height || 0)
+  const needsResize = width > config.imageMaxEdge || height > config.imageMaxEdge
+
+  let pipeline = sharp(buffer, { animated: false, failOn: 'none' }).rotate()
+  if (needsResize) {
+    pipeline = pipeline.resize({
+      width: config.imageMaxEdge,
+      height: config.imageMaxEdge,
+      fit: 'inside',
+      withoutEnlargement: true,
+    })
+  }
+
+  let nextBuffer = buffer
+  let nextMimeType = normalizedMimeType
+
+  if (normalizedMimeType === 'image/png') {
+    nextBuffer = await pipeline.png({
+      compressionLevel: 9,
+      palette: true,
+      effort: 8,
+      quality: config.imageWebpQuality,
+    }).toBuffer()
+  }
+  else if (normalizedMimeType === 'image/webp') {
+    nextBuffer = await pipeline.webp({
+      quality: config.imageWebpQuality,
+      effort: 6,
+    }).toBuffer()
+  }
+  else {
+    nextBuffer = await pipeline.jpeg({
+      quality: config.imageJpegQuality,
+      mozjpeg: true,
+    }).toBuffer()
+    nextMimeType = 'image/jpeg'
+  }
+
+  const useCompressed = needsResize || nextBuffer.length < buffer.length
+  return {
+    buffer: useCompressed ? nextBuffer : buffer,
+    mimeType: useCompressed ? nextMimeType : normalizedMimeType,
+    compressed: useCompressed,
+  }
 }
 
 function normalizeMediaQueryKeyword(keyword) {
@@ -523,7 +592,7 @@ async function uploadBufferToCurrentStorage(request, fileName, buffer, mimeType)
   }
 }
 
-async function saveUploadedImage(request, file, maxSize = 5 * 1024 * 1024) {
+async function saveUploadedImage(request, file, maxSize = 20 * 1024 * 1024) {
   assert(file, '请选择图片文件')
 
   const fileName = String(file.originalname || file.fieldname || '').trim()
@@ -535,15 +604,17 @@ async function saveUploadedImage(request, file, maxSize = 5 * 1024 * 1024) {
   assert(mimeType.startsWith('image/'), '仅支持图片文件')
   assert(buffer.length <= maxSize, `图片不能超过 ${Math.floor(maxSize / 1024 / 1024)}MB`)
 
-  const savedFile = await uploadBufferToCurrentStorage(request, fileName, buffer, mimeType)
+  const compressed = await compressImageBuffer(buffer, mimeType)
+  const savedFile = await uploadBufferToCurrentStorage(request, fileName, compressed.buffer, compressed.mimeType)
 
   return {
     fileName,
-    mimeType,
-    size: buffer.length,
+    mimeType: compressed.mimeType,
+    size: compressed.buffer.length,
     path: savedFile.url,
     storage: savedFile.path.startsWith('oss://') ? 'oss' : 'local',
     objectKey: savedFile.path.startsWith('oss://') ? savedFile.path.replace(/^oss:\/\//, '') : undefined,
+    compressed: compressed.compressed,
   }
 }
 
@@ -959,6 +1030,7 @@ function parseProfilePayload(body, currentUser) {
     phone: String(body.phone ?? currentUser.phone ?? '').trim(),
     wechat: String(body.wechat ?? currentUser.wechat ?? '').trim(),
     qq: String(body.qq ?? currentUser.qq ?? '').trim(),
+    avatarUrl: String(body.avatarUrl ?? currentUser.avatarUrl ?? '').trim(),
   }
 
   assert(payload.nickname.length >= 2, '昵称至少 2 个字')
@@ -1013,6 +1085,7 @@ app.use((request, _response, next) => {
         wechat: session.wechat,
         qq: session.qq,
         avatarColor: session.avatar_color,
+        avatarUrl: session.avatar_url || '',
         role: session.role,
         status: session.status,
         createdAt: session.user_created_at,

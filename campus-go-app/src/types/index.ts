@@ -18,6 +18,7 @@ export interface UserProfile {
   wechat: string
   qq: string
   avatarColor: string
+  avatarUrl: string
   role: UserRole
   status: UserStatus
   createdAt: string
@@ -48,6 +49,7 @@ export interface Listing {
   ownerNickname: string
   ownerCampus: string
   ownerAvatarColor: string
+  ownerAvatarUrl: string
   isFavorite?: boolean
   isInCart?: boolean
   isFollowingOwner?: boolean
@@ -124,6 +126,7 @@ export interface FollowedUserSummary {
   studentNo: string
   tagline: string
   avatarColor: string
+  avatarUrl: string
   createdAt: string
   isMutual: boolean
   activeListingCount: number
@@ -140,6 +143,7 @@ export interface ChatPeerUser {
   nickname: string
   campus: string
   avatarColor: string
+  avatarUrl: string
 }
 
 export interface ChatConversation {

@@ -25,6 +25,7 @@ db.exec(`
     wechat TEXT NOT NULL DEFAULT '',
     qq TEXT NOT NULL DEFAULT '',
     avatar_color TEXT NOT NULL,
+    avatar_url TEXT NOT NULL DEFAULT '',
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user',
     status TEXT NOT NULL DEFAULT 'active',
@@ -163,6 +164,7 @@ ensureColumn('users', 'contact_name', `TEXT NOT NULL DEFAULT ''`)
 ensureColumn('users', 'phone', `TEXT NOT NULL DEFAULT ''`)
 ensureColumn('users', 'wechat', `TEXT NOT NULL DEFAULT ''`)
 ensureColumn('users', 'qq', `TEXT NOT NULL DEFAULT ''`)
+ensureColumn('users', 'avatar_url', `TEXT NOT NULL DEFAULT ''`)
 
 function normalizePage(page = 1, pageSize = 10, maxPageSize = 30) {
   const safePage = Number.isFinite(Number(page)) ? Math.max(1, Number(page)) : 1
@@ -190,6 +192,7 @@ function rowToUser(row) {
     wechat: row.wechat,
     qq: row.qq,
     avatarColor: row.avatar_color,
+    avatarUrl: row.avatar_url || '',
     role: row.role,
     status: row.status,
     createdAt: row.created_at,
@@ -247,6 +250,7 @@ function rowToListing(row) {
     ownerNickname: row.owner_nickname,
     ownerCampus: row.owner_campus,
     ownerAvatarColor: row.owner_avatar_color,
+    ownerAvatarUrl: row.owner_avatar_url || '',
     isFavorite: Boolean(row.is_favorite),
     isInCart: Boolean(row.is_in_cart),
     isFollowingOwner: Boolean(row.is_following_owner),
@@ -267,6 +271,7 @@ function rowToFollowSummary(row) {
     studentNo: row.student_no,
     tagline: row.tagline,
     avatarColor: row.avatar_color,
+    avatarUrl: row.avatar_url || '',
     createdAt: row.followed_at,
     isMutual: Boolean(row.is_mutual),
     activeListingCount: row.active_listing_count ?? 0,
@@ -306,6 +311,7 @@ function rowToConversation(row, viewerId) {
       nickname: peerIsSeller ? row.seller_nickname : row.buyer_nickname,
       campus: peerIsSeller ? row.seller_campus : row.buyer_campus,
       avatarColor: peerIsSeller ? row.seller_avatar_color : row.buyer_avatar_color,
+      avatarUrl: peerIsSeller ? (row.seller_avatar_url || '') : (row.buyer_avatar_url || ''),
     },
   }
 }
@@ -369,6 +375,7 @@ function listSelectSql(viewerId = null) {
       u.nickname AS owner_nickname,
       u.campus AS owner_campus,
       u.avatar_color AS owner_avatar_color,
+      u.avatar_url AS owner_avatar_url,
       (SELECT COUNT(*) FROM favorites f WHERE f.listing_id = l.id) AS favorite_count,
       (SELECT COUNT(*) FROM cart_items c WHERE c.listing_id = l.id) AS cart_count,
       EXISTS(SELECT 1 FROM favorites f2 WHERE f2.user_id = ${safeViewerId} AND f2.listing_id = l.id) AS is_favorite,
@@ -463,9 +470,11 @@ function conversationSelectSql(viewerId) {
       buyer.nickname AS buyer_nickname,
       buyer.campus AS buyer_campus,
       buyer.avatar_color AS buyer_avatar_color,
+      buyer.avatar_url AS buyer_avatar_url,
       seller.nickname AS seller_nickname,
       seller.campus AS seller_campus,
       seller.avatar_color AS seller_avatar_color,
+      seller.avatar_url AS seller_avatar_url,
       (
         SELECT m.body
         FROM messages m
@@ -508,9 +517,9 @@ export function createUser({
   const result = db.prepare(`
     INSERT INTO users (
       nickname, campus, student_no, tagline, contact_name, phone, wechat, qq,
-      avatar_color, password_hash, role, status, created_at
+      avatar_color, avatar_url, password_hash, role, status, created_at
     )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     nickname,
     campus,
@@ -521,6 +530,7 @@ export function createUser({
     wechat,
     qq,
     avatarColor,
+    '',
     passwordHash,
     role,
     status,
@@ -551,6 +561,7 @@ export function updateUserRecord(userId, payload) {
       phone = ?,
       wechat = ?,
       qq = ?,
+      avatar_url = ?,
       role = ?,
       status = ?,
       password_hash = ?
@@ -564,6 +575,7 @@ export function updateUserRecord(userId, payload) {
     payload.phone || '',
     payload.wechat || '',
     payload.qq || '',
+    payload.avatarUrl || '',
     payload.role,
     payload.status,
     nextPasswordHash,
@@ -614,6 +626,7 @@ export function findSession(token) {
       u.wechat,
       u.qq,
       u.avatar_color,
+      u.avatar_url,
       u.role,
       u.status,
       u.created_at AS user_created_at
