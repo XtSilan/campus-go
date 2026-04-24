@@ -354,48 +354,63 @@ function goBuyer() {
           scroll-y
           :scroll-into-view="scrollIntoViewId"
         >
-          <view v-if="loadingMessages" class="chat-empty">
-            正在加载聊天记录...
-          </view>
-
-          <template v-else>
-            <view
-              v-for="message in messages"
-              :id="`msg-${message.id}`"
-              :key="message.id"
-              class="message-row"
-              :class="{ mine: isMine(message) }"
-            >
-              <view
-                v-if="!isMine(message)"
-                class="bubble-avatar"
-                :style="{ background: activeConversation.peerUser.avatarColor }"
-              >
-                <image v-if="activeConversation.peerUser.avatarUrl" class="bubble-avatar-image" :src="activeConversation.peerUser.avatarUrl" mode="aspectFill" />
-                <template v-else>
-                  {{ getCategoryInitial(activeConversation.peerUser.nickname) }}
-                </template>
-              </view>
-              <view class="bubble-wrap">
-                <view class="bubble">
-                  {{ message.body }}
-                </view>
-                <view class="bubble-time">
-                  {{ formatMessageTime(message.createdAt) }}
-                </view>
-              </view>
-              <view
-                v-if="isMine(message)"
-                class="bubble-avatar mine-avatar"
-                :style="{ background: authStore.currentUser?.avatarColor || '#c07d5c' }"
-              >
-                <image v-if="currentUserAvatarUrl" class="bubble-avatar-image" :src="currentUserAvatarUrl" mode="aspectFill" />
-                <template v-else>
-                  {{ getCategoryInitial(authStore.currentUser?.nickname || '我') }}
-                </template>
-              </view>
+          <view class="chat-messages">
+            <view v-if="loadingMessages" class="chat-empty">
+              正在加载聊天记录...
             </view>
-          </template>
+
+            <template v-else>
+              <view
+                v-for="message in messages"
+                :id="`msg-${message.id}`"
+                :key="message.id"
+                class="message-row"
+                :class="{ mine: isMine(message) }"
+              >
+                <template v-if="!isMine(message)">
+                  <view
+                    class="bubble-avatar"
+                    :style="{ background: activeConversation.peerUser.avatarColor }"
+                  >
+                    <image v-if="activeConversation.peerUser.avatarUrl" class="bubble-avatar-image" :src="activeConversation.peerUser.avatarUrl" mode="aspectFill" />
+                    <template v-else>
+                      {{ getCategoryInitial(activeConversation.peerUser.nickname) }}
+                    </template>
+                  </view>
+
+                  <view class="message-main">
+                    <view class="bubble">
+                      {{ message.body }}
+                    </view>
+                    <view class="bubble-time">
+                      {{ formatMessageTime(message.createdAt) }}
+                    </view>
+                  </view>
+                </template>
+
+                <template v-else>
+                  <view class="message-main mine-main">
+                    <view class="bubble">
+                      {{ message.body }}
+                    </view>
+                    <view class="bubble-time">
+                      {{ formatMessageTime(message.createdAt) }}
+                    </view>
+                  </view>
+
+                  <view
+                    class="bubble-avatar mine-avatar"
+                    :style="{ background: authStore.currentUser?.avatarColor || '#c07d5c' }"
+                  >
+                    <image v-if="currentUserAvatarUrl" class="bubble-avatar-image" :src="currentUserAvatarUrl" mode="aspectFill" />
+                    <template v-else>
+                      {{ getCategoryInitial(authStore.currentUser?.nickname || '我') }}
+                    </template>
+                  </view>
+                </template>
+              </view>
+            </template>
+          </view>
         </scroll-view>
 
         <view class="chat-inputbar">
@@ -706,8 +721,11 @@ function goBuyer() {
   flex: 1;
   height: 0;
   min-height: 0;
-  padding: 24rpx 24rpx 36rpx;
   overflow: hidden;
+}
+
+.chat-messages {
+  padding: 24rpx 24rpx 36rpx;
 }
 
 .chat-empty {
@@ -719,11 +737,12 @@ function goBuyer() {
 
 .message-row {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 16rpx;
   margin-top: 22rpx;
   width: 100%;
   box-sizing: border-box;
+  justify-content: flex-start;
 }
 
 .message-row.mine {
@@ -742,6 +761,7 @@ function goBuyer() {
   font-weight: 700;
   flex-shrink: 0;
   overflow: hidden;
+  align-self: center;
 }
 
 .bubble-avatar-image {
@@ -749,23 +769,16 @@ function goBuyer() {
   height: 100%;
 }
 
-.mine-avatar {
-  margin-left: 8rpx;
-}
-
-.bubble-wrap {
-  max-width: calc(100% - 88rpx);
+.message-main {
+  max-width: 68%;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  flex-shrink: 1;
-}
-
-.message-row:not(.mine) .bubble-wrap {
   align-items: flex-start;
+  flex: 0 1 68%;
 }
 
-.message-row.mine .bubble-wrap {
+.mine-main {
   align-items: flex-end;
 }
 
@@ -797,7 +810,7 @@ function goBuyer() {
   color: #999;
 }
 
-.message-row.mine .bubble-time {
+.mine-main .bubble-time {
   text-align: right;
 }
 
