@@ -62,6 +62,7 @@ onShow(async () => {
   }
 
   try {
+    await authStore.ensureSession()
     await Promise.all([
       marketStore.loadDashboard({ useCache: true }),
       marketStore.loadCollections({ useCache: true }),

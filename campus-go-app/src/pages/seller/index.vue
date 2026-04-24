@@ -51,9 +51,9 @@ onShow(async () => {
     return
   }
 
-  connectSocket()
-
   try {
+    await authStore.ensureSession()
+    connectSocket()
     await loadConversations()
     if (entryConversationId.value) {
       await openConversation(entryConversationId.value, { keepDeepLink: true })
@@ -723,7 +723,7 @@ function goBuyer() {
   gap: 16rpx;
   margin-top: 22rpx;
   width: 100%;
-  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .message-row.mine {
@@ -731,11 +731,11 @@ function goBuyer() {
 }
 
 .message-row:not(.mine) {
-  padding-right: 120rpx;
+  padding-right: 96rpx;
 }
 
 .message-row.mine {
-  padding-left: 120rpx;
+  padding-left: 96rpx;
 }
 
 .bubble-avatar {
@@ -762,7 +762,7 @@ function goBuyer() {
 }
 
 .bubble-wrap {
-  max-width: 100%;
+  max-width: calc(100% - 88rpx);
   min-width: 0;
   display: flex;
   flex-direction: column;

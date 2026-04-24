@@ -47,8 +47,13 @@ onShow(async () => {
     return
   }
 
-  await authStore.ensureSession()
-  syncForm()
+  try {
+    await authStore.ensureSession()
+    syncForm()
+  }
+  catch (error) {
+    showError((error as Error).message)
+  }
 })
 
 function goBack() {
@@ -73,8 +78,24 @@ async function chooseAvatar() {
       fileName: image.fileName,
       filePath: image.filePath,
     })
+    const currentUser = authStore.currentUser
+    if (!currentUser) {
+      throw new Error('登录状态已失效，请重新进入页面后再试')
+    }
+
     form.avatarUrl = uploaded.path
-    showSuccess('头像已上传')
+    const user = await authStore.updateProfile({
+      nickname: currentUser.nickname.trim(),
+      campus: currentUser.campus.trim(),
+      tagline: currentUser.tagline.trim(),
+      contactName: currentUser.contactName.trim() || currentUser.nickname.trim(),
+      phone: currentUser.phone.trim(),
+      wechat: currentUser.wechat.trim(),
+      qq: currentUser.qq.trim(),
+      avatarUrl: uploaded.path,
+    })
+    form.avatarUrl = user.avatarUrl || uploaded.path
+    showSuccess('头像已上传并保存')
   }
   catch (error) {
     showError((error as Error).message)

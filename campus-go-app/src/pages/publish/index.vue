@@ -10,7 +10,14 @@ import { useMarketStore } from '@/stores/market'
 import { chooseImages } from '@/utils/image'
 import { confirmAction, jumpToLogin, showError, showSuccess } from '@/utils/ui'
 
-const DRAFT_KEY = 'campus_go_publish_draft'
+const LEGACY_DRAFT_KEY = 'campus_go_publish_draft'
+const DRAFT_LIST_KEY = 'campus_go_publish_drafts'
+
+interface PublishDraft extends ListingPayload {
+  draftId: string
+  priceText: string
+  updatedAt: string
+}
 
 const authStore = useAuthStore()
 const marketStore = useMarketStore()
@@ -23,22 +30,29 @@ const uploading = ref(false)
 const priceText = ref('')
 const editorPlaceholder = ref('描述一下宝贝的品牌型号、货品来源、使用感受...')
 const draftCount = ref(0)
+const draftList = ref<PublishDraft[]>([])
+const draftSheetVisible = ref(false)
+const activeDraftId = ref('')
 
-const form = reactive<ListingPayload>({
-  type: 'supply',
-  title: '',
-  category: '',
-  condition: '',
-  description: '',
-  price: null,
-  imageUrl: '',
-  imageUrls: [],
-  location: '',
-  contactName: '',
-  phone: '',
-  wechat: '',
-  qq: '',
-})
+function getDefaultForm(): ListingPayload {
+  return {
+    type: 'supply',
+    title: '',
+    category: '',
+    condition: '',
+    description: '',
+    price: null,
+    imageUrl: '',
+    imageUrls: [],
+    location: '',
+    contactName: '',
+    phone: '',
+    wechat: '',
+    qq: '',
+  }
+}
+
+const form = reactive<ListingPayload>(getDefaultForm())
 
 const pageTitle = computed(() => (form.type === 'supply' ? '发闲置' : '发求购'))
 const priceLabel = computed(() => (form.type === 'supply' ? '价格' : '预算'))
@@ -46,15 +60,225 @@ const priceLabel = computed(() => (form.type === 'supply' ? '价格' : '预算')
 const previewImages = computed(() => form.imageUrls.filter(Boolean))
 const isEditing = computed(() => Boolean(form.id))
 
-function createDraftSnapshot() {
-  return {
-    ...form,
-    priceText: priceText.value,
+function createDraftId() {
+  return `draft_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`
+}
+
+function hasMeaningfulDraftContent(payload: Partial<PublishDraft>) {
+  return Boolean(
+    String(payload.title || '').trim()
+    || String(payload.category || '').trim()
+    || String(payload.condition || '').trim()
+    || String(payload.description || '').trim()
+    || String(payload.priceText || '').trim()
+    || String(payload.location || '').trim()
+    || String(payload.imageUrl || '').trim()
+    || (Array.isArray(payload.imageUrls) && payload.imageUrls.length),
+  )
+}
+
+function normalizeDraft(raw: any): PublishDraft | null {
+  if (!raw || typeof raw !== 'object') {
+    return null
+  }
+
+  const imageUrls = Array.isArray(raw.imageUrls)
+    ? raw.imageUrls.map((item: string) => String(item || '').trim()).filter(Boolean)
+    : []
+  const fallbackImageUrl = String(raw.imageUrl || '').trim()
+  const priceTextValue = raw.priceText != null
+    ? String(raw.priceText).trim()
+    : raw.price != null && raw.price !== ''
+      ? String(raw.price).trim()
+      : ''
+  const parsedPrice = priceTextValue ? Number(priceTextValue) : null
+
+  const normalized: PublishDraft = {
+    draftId: String(raw.draftId || createDraftId()),
+    updatedAt: String(raw.updatedAt || new Date().toISOString()),
+    type: raw.type === 'demand' ? 'demand' : 'supply',
+    title: String(raw.title || '').trim(),
+    category: String(raw.category || '').trim(),
+    condition: String(raw.condition || '').trim(),
+    description: String(raw.description || '').trim(),
+    price: parsedPrice != null && !Number.isNaN(parsedPrice) ? parsedPrice : null,
+    imageUrl: imageUrls[0] || fallbackImageUrl,
+    imageUrls: imageUrls.length ? imageUrls : (fallbackImageUrl ? [fallbackImageUrl] : []),
+    location: String(raw.location || '').trim(),
+    contactName: String(raw.contactName || '').trim(),
+    phone: String(raw.phone || '').trim(),
+    wechat: String(raw.wechat || '').trim(),
+    qq: String(raw.qq || '').trim(),
+    priceText: priceTextValue,
+  }
+
+  return hasMeaningfulDraftContent(normalized) ? normalized : null
+}
+
+function sortDrafts(drafts: PublishDraft[]) {
+  return [...drafts].sort((left, right) => {
+    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime()
+  })
+}
+
+function loadStoredDrafts() {
+  const rawDrafts = uni.getStorageSync(DRAFT_LIST_KEY)
+  const drafts = Array.isArray(rawDrafts)
+    ? rawDrafts
+      .map((item: any) => normalizeDraft(item))
+      .filter((item: PublishDraft | null): item is PublishDraft => Boolean(item))
+    : []
+
+  const legacyDraft = uni.getStorageSync(LEGACY_DRAFT_KEY)
+  const migratedDraft = normalizeDraft(legacyDraft)
+  if (legacyDraft) {
+    uni.removeStorageSync(LEGACY_DRAFT_KEY)
+  }
+
+  if (migratedDraft) {
+    drafts.unshift(migratedDraft)
+  }
+
+  const uniqueDrafts = sortDrafts(drafts).filter((draft, index, list) => {
+    return list.findIndex(item => item.draftId === draft.draftId) === index
+  })
+
+  if (uniqueDrafts.length) {
+    uni.setStorageSync(DRAFT_LIST_KEY, uniqueDrafts)
+  }
+  else {
+    uni.removeStorageSync(DRAFT_LIST_KEY)
+  }
+
+  return uniqueDrafts
+}
+
+function persistDrafts(drafts: PublishDraft[]) {
+  const nextDrafts = sortDrafts(
+    drafts
+      .map(item => normalizeDraft(item))
+      .filter((item: PublishDraft | null): item is PublishDraft => Boolean(item)),
+  )
+
+  if (nextDrafts.length) {
+    uni.setStorageSync(DRAFT_LIST_KEY, nextDrafts)
+  }
+  else {
+    uni.removeStorageSync(DRAFT_LIST_KEY)
+  }
+
+  uni.removeStorageSync(LEGACY_DRAFT_KEY)
+  draftList.value = nextDrafts
+  draftCount.value = nextDrafts.length
+
+  if (activeDraftId.value && !nextDrafts.some(item => item.draftId === activeDraftId.value)) {
+    activeDraftId.value = ''
   }
 }
 
+function createDraftSnapshot(): PublishDraft {
+  return {
+    ...form,
+    draftId: activeDraftId.value || createDraftId(),
+    updatedAt: new Date().toISOString(),
+    price: priceText.value ? Number(priceText.value) : null,
+    imageUrl: form.imageUrls[0] || form.imageUrl || '',
+    imageUrls: form.imageUrls.filter(Boolean),
+    priceText: priceText.value.trim(),
+  }
+}
+
+function applyDraftToForm(draft: PublishDraft) {
+  Object.assign(form, getDefaultForm(), {
+    id: undefined,
+    type: draft.type,
+    title: draft.title,
+    category: draft.category,
+    condition: draft.condition,
+    description: draft.description,
+    price: draft.price,
+    imageUrl: draft.imageUrls[0] || draft.imageUrl || '',
+    imageUrls: [...draft.imageUrls],
+    location: draft.location,
+    contactName: draft.contactName,
+    phone: draft.phone,
+    wechat: draft.wechat,
+    qq: draft.qq,
+  })
+  priceText.value = draft.priceText || ''
+  activeDraftId.value = draft.draftId
+  syncPlaceholder()
+}
+
+function formatDraftTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '刚刚保存'
+  }
+
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+  const hour = `${date.getHours()}`.padStart(2, '0')
+  const minute = `${date.getMinutes()}`.padStart(2, '0')
+  return `${month}-${day} ${hour}:${minute}`
+}
+
 function updateDraftCount() {
-  draftCount.value = uni.getStorageSync(DRAFT_KEY) ? 1 : 0
+  draftList.value = loadStoredDrafts()
+  draftCount.value = draftList.value.length
+}
+
+function openDraftSheet() {
+  saveDraft()
+  updateDraftCount()
+  draftSheetVisible.value = true
+}
+
+function closeDraftSheet() {
+  draftSheetVisible.value = false
+}
+
+async function restoreDraftItem(draft: PublishDraft) {
+  const currentSnapshot = createDraftSnapshot()
+  const shouldConfirm = hasMeaningfulDraftContent(currentSnapshot) && activeDraftId.value !== draft.draftId
+  if (shouldConfirm) {
+    const confirmed = await confirmAction('恢复草稿', '恢复后会覆盖当前正在编辑的内容，确认继续吗？')
+    if (!confirmed) {
+      return
+    }
+  }
+
+  applyDraftToForm(draft)
+  closeDraftSheet()
+  showSuccess('草稿已恢复')
+}
+
+async function deleteDraft(draftId: string) {
+  const targetDraft = draftList.value.find(item => item.draftId === draftId)
+  if (!targetDraft) {
+    return
+  }
+
+  const confirmed = await confirmAction(
+    '删除草稿',
+    `确认删除“${targetDraft.title || (targetDraft.type === 'supply' ? '未命名闲置' : '未命名求购')}”吗？`,
+  )
+  if (!confirmed) {
+    return
+  }
+
+  persistDrafts(draftList.value.filter(item => item.draftId !== draftId))
+  showSuccess('草稿已删除')
+}
+
+function removeActiveDraft() {
+  if (!activeDraftId.value) {
+    updateDraftCount()
+    return
+  }
+
+  persistDrafts(loadStoredDrafts().filter(item => item.draftId !== activeDraftId.value))
+  activeDraftId.value = ''
 }
 
 function syncPlaceholder() {
@@ -69,42 +293,18 @@ function saveDraft() {
   }
 
   const snapshot = createDraftSnapshot()
-  const hasContent = Object.values(snapshot).some(value => String(value || '').trim())
-  if (!hasContent) {
-    uni.removeStorageSync(DRAFT_KEY)
-    updateDraftCount()
+  if (!hasMeaningfulDraftContent(snapshot)) {
+    removeActiveDraft()
     return
   }
 
-  uni.setStorageSync(DRAFT_KEY, snapshot)
-  updateDraftCount()
-}
-
-async function restoreDraft(force = false) {
-  const draft = uni.getStorageSync(DRAFT_KEY)
-  if (!draft) {
-    showError('草稿箱里还没有内容')
-    return
-  }
-
-  if (!force) {
-    const confirmed = await confirmAction('恢复草稿', '检测到本地草稿，是否恢复到当前发布页？')
-    if (!confirmed) {
-      return
-    }
-  }
-
-  Object.assign(form, {
-    ...form,
-    ...draft,
-  })
-  priceText.value = draft.priceText || ''
-  syncPlaceholder()
-  showSuccess('草稿已恢复')
+  activeDraftId.value = snapshot.draftId
+  persistDrafts([snapshot, ...loadStoredDrafts().filter(item => item.draftId !== snapshot.draftId)])
 }
 
 onLoad(async (query) => {
   syncPlaceholder()
+  updateDraftCount()
 
   if (query?.type === 'supply' || query?.type === 'demand') {
     form.type = query.type as ListingType
@@ -137,11 +337,6 @@ onLoad(async (query) => {
       showError((error as Error).message)
     }
   }
-  else if (uni.getStorageSync(DRAFT_KEY)) {
-    await restoreDraft()
-  }
-
-  updateDraftCount()
 })
 
 onUnload(() => {
@@ -270,8 +465,7 @@ async function submitForm() {
       wechat: form.wechat.trim(),
       qq: form.qq.trim(),
     })
-    uni.removeStorageSync(DRAFT_KEY)
-    updateDraftCount()
+    removeActiveDraft()
     showSuccess(form.id ? '已更新' : '发布成功')
     setTimeout(() => {
       uni.reLaunch({
@@ -326,8 +520,8 @@ async function submitForm() {
             {{ pageTitle }}
           </view>
           <view class="top-actions">
-            <view class="draft-link" @click="restoreDraft(true)">
-              草稿箱 · {{ draftCount }}
+            <view class="draft-link" @click="openDraftSheet">
+              草稿箱<text v-if="draftCount"> · {{ draftCount }}</text>
             </view>
             <view class="top-action" @click="submitForm">
               {{ submitting ? '发布中' : (isEditing ? '保存' : '发布') }}
@@ -436,6 +630,62 @@ async function submitForm() {
         <view class="rules-card">
           <view v-for="rule in campusRules" :key="rule" class="rule-line">
             {{ rule }}
+          </view>
+        </view>
+
+        <view v-if="draftSheetVisible" class="draft-sheet-mask" @click="closeDraftSheet">
+          <view class="draft-sheet" @click.stop>
+            <view class="draft-sheet-head">
+              <view class="draft-sheet-title">
+                草稿箱
+              </view>
+              <view class="draft-sheet-meta">
+                {{ draftCount }} 条草稿
+              </view>
+            </view>
+
+            <view v-if="draftList.length" class="draft-list">
+              <view
+                v-for="draft in draftList"
+                :key="draft.draftId"
+                class="draft-item"
+                @click="restoreDraftItem(draft)"
+              >
+                <image
+                  v-if="draft.imageUrl"
+                  class="draft-thumb"
+                  :src="draft.imageUrl"
+                  mode="aspectFill"
+                />
+                <view v-else class="draft-thumb draft-thumb-placeholder">
+                  {{ draft.type === 'supply' ? '闲置' : '求购' }}
+                </view>
+
+                <view class="draft-body">
+                  <view class="draft-name">
+                    {{ draft.title || (draft.type === 'supply' ? '未命名闲置' : '未命名求购') }}
+                  </view>
+                  <view class="draft-copy">
+                    {{ draft.description || draft.category || draft.location || '点击可恢复到当前发布页' }}
+                  </view>
+                  <view class="draft-time">
+                    {{ formatDraftTime(draft.updatedAt) }}
+                  </view>
+                </view>
+
+                <view class="draft-delete" @click.stop="deleteDraft(draft.draftId)">
+                  删除
+                </view>
+              </view>
+            </view>
+
+            <view v-else class="draft-empty">
+              草稿箱还是空的，写点内容再退出，系统才会帮你自动保存。
+            </view>
+
+            <view class="draft-sheet-close" @click="closeDraftSheet">
+              关闭
+            </view>
           </view>
         </view>
       </view>
@@ -763,5 +1013,133 @@ async function submitForm() {
   color: #111;
   font-size: 26rpx;
   font-weight: 800;
+}
+
+.draft-sheet-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 17, 17, 0.34);
+  display: flex;
+  align-items: flex-end;
+  z-index: 40;
+}
+
+.draft-sheet {
+  width: 100%;
+  max-height: 74vh;
+  padding: 28rpx 24rpx calc(28rpx + env(safe-area-inset-bottom));
+  border-radius: 34rpx 34rpx 0 0;
+  background: #f8f7f3;
+}
+
+.draft-sheet-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.draft-sheet-title {
+  font-size: 38rpx;
+  font-weight: 800;
+  color: #111;
+}
+
+.draft-sheet-meta {
+  font-size: 24rpx;
+  color: #8a8a84;
+}
+
+.draft-list {
+  margin-top: 22rpx;
+  max-height: 54vh;
+  overflow-y: auto;
+}
+
+.draft-item {
+  padding: 22rpx 0;
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.06);
+}
+
+.draft-thumb {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: 24rpx;
+  flex-shrink: 0;
+  background: #eceae3;
+}
+
+.draft-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #5f5f5a;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.draft-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.draft-name {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #111;
+  line-height: 1.35;
+}
+
+.draft-copy,
+.draft-time {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #8a8a84;
+  line-height: 1.5;
+}
+
+.draft-copy {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.draft-delete {
+  flex-shrink: 0;
+  padding: 0 18rpx;
+  min-height: 56rpx;
+  border-radius: 999rpx;
+  background: #ece9e1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  font-size: 24rpx;
+  font-weight: 700;
+}
+
+.draft-empty {
+  padding: 60rpx 0 50rpx;
+  text-align: center;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #8a8a84;
+}
+
+.draft-sheet-close {
+  margin-top: 24rpx;
+  min-height: 84rpx;
+  border-radius: 999rpx;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 700;
 }
 </style>
