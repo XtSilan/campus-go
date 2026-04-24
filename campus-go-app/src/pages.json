@@ -1,16 +1,16 @@
 {
   "pages": [
     {
-      "path": "pages/seller/index",
-      "style": {
-        "navigationStyle": "custom"
-      }
-    },
-    {
       "path": "pages/buyer/index",
       "style": {
         "navigationStyle": "custom",
         "onReachBottomDistance": 80
+      }
+    },
+    {
+      "path": "pages/seller/index",
+      "style": {
+        "navigationStyle": "custom"
       }
     },
     {

@@ -106,6 +106,17 @@ function goBack() {
   })
 }
 
+function previewListingImage(index: number) {
+  if (!listingImages.value.length) {
+    return
+  }
+
+  uni.previewImage({
+    urls: listingImages.value,
+    current: listingImages.value[index] || listingImages.value[0],
+  })
+}
+
 async function openChat() {
   if (!listing.value) {
     return
@@ -264,6 +275,7 @@ async function toggleSellerFollow() {
                 class="media-image multi"
                 :src="image"
                 mode="aspectFill"
+                @click="previewListingImage(index)"
               />
             </view>
           </scroll-view>

@@ -257,7 +257,7 @@ const subtitleText = computed(() => {
 .meta-side {
   flex-shrink: 0;
   font-size: 22rpx;
-  color: #666;
+  color: #ff4d3a;
   font-weight: 700;
 }
 </style>

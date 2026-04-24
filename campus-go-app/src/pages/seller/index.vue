@@ -342,9 +342,6 @@ function goBuyer() {
               {{ activeConversation.listingStatus === 'active' ? '商品在售中' : '商品已下架' }}
             </view>
           </view>
-          <view class="chat-listing-tag">
-            校园闲置
-          </view>
         </view>
 
         <view class="chat-reminder">
@@ -463,8 +460,11 @@ function goBuyer() {
 
 <style scoped lang="scss">
 .message-page {
+  height: 100vh;
   min-height: 100vh;
   background: #f7f7f5;
+  padding: 0;
+  overflow: hidden;
 }
 
 .login-shell,
@@ -568,10 +568,12 @@ function goBuyer() {
 }
 
 .chat-shell {
+  height: 100vh;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, #ffffff, #faf8f3 56%, #f7f7f5);
+  overflow: hidden;
 }
 
 .chat-topbar {
@@ -580,6 +582,7 @@ function goBuyer() {
   align-items: center;
   gap: 16rpx;
   padding: calc(22rpx + env(safe-area-inset-top)) 24rpx 18rpx;
+  flex-shrink: 0;
 }
 
 .chat-back,
@@ -618,13 +621,14 @@ function goBuyer() {
 
 .chat-listing-card {
   display: grid;
-  grid-template-columns: 112rpx minmax(0, 1fr) 128rpx;
+  grid-template-columns: 112rpx minmax(0, 1fr);
   align-items: center;
   gap: 18rpx;
   margin: 0 24rpx;
   padding: 20rpx;
   border-radius: 30rpx;
   background: #fff;
+  flex-shrink: 0;
 }
 
 .chat-listing-image,
@@ -669,18 +673,6 @@ function goBuyer() {
   color: #8b8b86;
 }
 
-.chat-listing-tag {
-  min-height: 86rpx;
-  border-radius: 999rpx;
-  background: #ffe125;
-  color: #111;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 26rpx;
-  font-weight: 800;
-}
-
 .chat-reminder {
   margin: 18rpx 24rpx 0;
   padding: 18rpx 24rpx;
@@ -689,11 +681,15 @@ function goBuyer() {
   font-size: 24rpx;
   line-height: 1.7;
   color: #7a5a00;
+  flex-shrink: 0;
 }
 
 .chat-scroll {
   flex: 1;
+  height: 0;
+  min-height: 0;
   padding: 24rpx 24rpx 36rpx;
+  overflow: hidden;
 }
 
 .chat-empty {
@@ -708,10 +704,20 @@ function goBuyer() {
   align-items: flex-end;
   gap: 16rpx;
   margin-top: 22rpx;
+  width: 100%;
+  overflow: hidden;
 }
 
 .message-row.mine {
   justify-content: flex-end;
+}
+
+.message-row:not(.mine) {
+  padding-right: 120rpx;
+}
+
+.message-row.mine {
+  padding-left: 120rpx;
 }
 
 .bubble-avatar {
@@ -728,17 +734,28 @@ function goBuyer() {
 }
 
 .bubble-wrap {
-  max-width: 76%;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 1;
+}
+
+.message-row.mine .bubble-wrap {
+  align-items: flex-end;
+  margin-left: auto;
 }
 
 .bubble {
+  max-width: 100%;
   padding: 22rpx 24rpx;
   border-radius: 30rpx;
   background: #fff;
   font-size: 30rpx;
   line-height: 1.58;
   color: #111;
-  word-break: break-word;
+  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .message-row.mine .bubble {
@@ -764,6 +781,7 @@ function goBuyer() {
   padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
   background: rgba(255, 255, 255, 0.98);
   border-top: 1px solid rgba(17, 17, 17, 0.06);
+  flex-shrink: 0;
 }
 
 .chat-icon-btn {

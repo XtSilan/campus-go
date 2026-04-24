@@ -22,6 +22,7 @@ const registerForm = reactive({
 const tradeItems = computed(() => ([
   {
     title: '我的交易',
+    icon: '交',
     value: String((marketStore.summary?.activeSupplyCount || 0) + (marketStore.summary?.activeDemandCount || 0)),
     action: openTrades,
   },
@@ -30,22 +31,27 @@ const tradeItems = computed(() => ([
 const toolItems = computed(() => ([
   {
     title: '我的关注',
+    icon: '关',
     action: openFollows,
   },
   {
     title: '发布商品',
+    icon: '发',
     action: goPublishSupply,
   },
   {
     title: '买家广场',
+    icon: '逛',
     action: goBuyerPage,
   },
   {
     title: '系统通知',
+    icon: '通',
     action: openNotifications,
   },
   {
     title: '退出登录',
+    icon: '退',
     action: logout,
   },
 ]))
@@ -252,13 +258,13 @@ async function logout() {
           >
             <view class="menu-main">
               <view class="menu-icon accent">
-                交
+                {{ item.icon }}
               </view>
               <view class="menu-copy">
                 <view class="menu-title">
                   {{ item.title }}
                 </view>
-                <view class="menu-desc">
+                <view v-if="item.desc" class="menu-desc">
                   {{ item.desc }}
                 </view>
               </view>
@@ -282,13 +288,13 @@ async function logout() {
           >
             <view class="menu-main">
               <view class="menu-icon">
-                工
+                {{ item.icon }}
               </view>
               <view class="menu-copy">
                 <view class="menu-title">
                   {{ item.title }}
                 </view>
-                <view class="menu-desc">
+                <view v-if="item.desc" class="menu-desc">
                   {{ item.desc }}
                 </view>
               </view>

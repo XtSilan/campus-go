@@ -195,7 +195,7 @@ const coverStyle = computed(() => ({
 .price-text {
   font-size: 22rpx;
   font-weight: 700;
-  color: var(--campus-ink);
+  color: #ff4d3a;
 }
 
 .price-meta {
