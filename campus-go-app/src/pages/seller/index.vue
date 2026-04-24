@@ -730,14 +730,6 @@ function goBuyer() {
   justify-content: flex-end;
 }
 
-.message-row:not(.mine) {
-  padding-right: 96rpx;
-}
-
-.message-row.mine {
-  padding-left: 96rpx;
-}
-
 .bubble-avatar {
   width: 72rpx;
   height: 72rpx;
@@ -769,9 +761,12 @@ function goBuyer() {
   flex-shrink: 1;
 }
 
+.message-row:not(.mine) .bubble-wrap {
+  align-items: flex-start;
+}
+
 .message-row.mine .bubble-wrap {
   align-items: flex-end;
-  margin-left: auto;
 }
 
 .bubble {
@@ -786,8 +781,13 @@ function goBuyer() {
   overflow-wrap: anywhere;
 }
 
+.message-row:not(.mine) .bubble {
+  border-bottom-left-radius: 12rpx;
+}
+
 .message-row.mine .bubble {
   background: #ffe125;
+  border-bottom-right-radius: 12rpx;
 }
 
 .bubble-time {
