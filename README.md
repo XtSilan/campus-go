@@ -397,27 +397,6 @@ npm run build
 - [ ] 更细粒度的角色权限
 - [ ] 自动化测试与 CI
 
-## 参与贡献
-
-如果你准备继续迭代这个项目，建议优先遵循下面的顺序：
-
-1. 先改共享后端接口或数据结构
-2. 再同步移动端调用与状态管理
-3. 最后同步后台管理页
-
-提交前建议至少完成：
-
-```bash
-cd campus-go-app
-pnpm build:h5
-
-cd ../campus-go-server
-node --check src/server.js
-
-cd ../vue2-iview2-admin-master
-npm run build
-```
-
 ## 致谢
 
 - 管理后台基础模板来自[vue2-iview2-admin](https://github.com/hanjiangxueying/vue2-iview2-admin)
